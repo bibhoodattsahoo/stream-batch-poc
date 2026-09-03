@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:db="http://www.mulesoft.org/schema/mule/db"
+	xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns:batch="http://www.mulesoft.org/schema/mule/batch"
+	xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns="http://www.mulesoft.org/schema/mule/core"
+	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd 
+http://www.mulesoft.org/schema/mule/batch http://www.mulesoft.org/schema/mule/batch/current/mule-batch.xsd 
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd">
+	<!-- Flow 1: Instantly accepts the client request and returns 202 -->
+<http:listener-config name="HTTP_Listener_config" doc:name="HTTP Listener config" doc:id="d71cac82-fc74-4bd5-813a-106cd9770088" >
+		<http:listener-connection host="0.0.0.0" port="8081" />
+	</http:listener-config>
+	<db:config name="Database_Config" doc:name="Database Config" doc:id="04120b3d-70b9-4ea2-9a6e-b0f4ed14aaa3" >
+		<db:my-sql-connection host="gateway01.ap-southeast-1.prod.aws.tidbcloud.com" port="4000" user="4VHnCUXuqsZrY92.root" password="LkdZuOxisqqGqtI5" database="test" >
+			<reconnection >
+				<reconnect count="10" />
+			</reconnection>
+			<db:pooling-profile maxPoolSize="50" minPoolSize="10" acquireIncrement="5" maxWait="60000" maxWaitUnit="MILLISECONDS" />
+		</db:my-sql-connection>
+	</db:config>
+	<flow name="streamline_poc_trigger_flow">
+    <http:listener config-ref="HTTP_Listener_config" path="/test" doc:name="Listener">
+    </http:listener>
+    
+    <set-payload value='#[{"status": "Batch execution started", "message": "Processing 1 million records in the background."}]' doc:name="Set Response Body"/>
+    
+    <!-- This block forks a background thread immediately -->
+    <async doc:name="Async Background Worker">
+        <flow-ref name="streamline_pocFlow" doc:name="Trigger Heavy Engine"/>
+    </async>
+</flow>
+
+<!-- Flow 2: The actual background stream engine (Safe from network timeouts) -->
+	<flow name="streamline_pocFlow">
+    <!-- 1. Read Classpath CSV -->
+    <ee:transform doc:name="Load Classpath File">
+        <ee:message>
+            <ee:set-payload><![CDATA[%dw 2.0
+output application/csv
+---
+readUrl("classpath://mulesoft_batch_sample_1M.csv", "application/csv")]]></ee:set-payload>
+        </ee:message>
+    </ee:transform>
+
+    <!-- 2. Map Stream to Java Objects -->
+
+    <!-- 3. Safe Batch Pipeline Processing Container -->
+    <batch:job jobName="streamline-1m-records-batch-job" maxFailedRecords="-1" blockSize="10000">
+        <batch:process-records>
+				<batch:step name="Batch_Step" doc:id="6ed82729-49cd-43b7-bbb4-b952528245e5" >
+					<ee:transform doc:name="Streamline Map Rows">
+        <ee:message>
+            <ee:set-payload><![CDATA[%dw 2.0
+output application/java
+---
+payload map (record, index) -> {
+    CustomerID : record.CustomerID,
+    FirstName : record.FirstName,
+    LastName : record.LastName,
+    Email : record.Email,
+    Phone : record.Phone,
+    City: record.City,
+    AccountType : record.AccountType,
+    Balance : record.Balance,
+    CreatedDate: record.CreatedDate
+}]]></ee:set-payload>
+        </ee:message>
+    </ee:transform>
+					<db:bulk-insert doc:name="Bulk Insert to TiDB" config-ref="Database_Config" doc:id="bb3d6f90-90ea-434c-8d15-0f60ba3b0069">
+							<db:sql><![CDATA[INSERT INTO customers (CustomerID, FirstName, LastName, Email, Phone, City, AccountType, Balance, CreatedDate) 
+VALUES (:CustomerID, :FirstName, :LastName, :Email, :Phone, :City, :AccountType, :Balance, :CreatedDate)]]></db:sql>
+        </db:bulk-insert>
+				</batch:step>
+				<batch:step name="Validation_Step">
+                <!-- Drop your test cases and log validation summaries here safely -->
+                <logger level="INFO" doc:name="Track Row Process" message="#['Processing Batch. First Customer ID: ' ++ (payload[0].CustomerID default '')]"/>
+            </batch:step>
+        </batch:process-records>
+        <batch:on-complete>
+            <logger level="INFO" doc:name="Final Summary" message="#['--- BATCH TEST RUN SUMMARY ---' &#10;                     ++ '\n Total Records Loaded into DB: ' ++ (payload.loadedRecords default 0)&#10;                     ++ '\n Total Records Failed: ' ++ (payload.failedRecords default 0)&#10;                     ++ '\n Elapsed Processing Time (ms): ' ++ (payload.elapsedTimeInMillis default 0)]"/>
+        </batch:on-complete>
+    </batch:job>
+</flow>
+	</mule>
