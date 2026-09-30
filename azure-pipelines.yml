@@ -1,0 +1,35 @@
+trigger:
+  - main
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+steps:
+  - task: JavaToolInstaller@0
+    inputs:
+      versionSpec: '17'
+      jdkSource: 'PreInstalled'
+      jdkArchitectureOption: 'x64'
+    displayName: 'Set up JDK 17'
+
+  - task: Maven@4
+    inputs:
+      mavenPomFile: 'pom.xml'
+      goals: 'clean deploy'
+      options: '-s .maven/settings.xml -DskipTests'
+      publishJUnitResults: false
+    displayName: 'Publish to Exchange'
+    env:
+      ANYPOINT_USERNAME: $(ANYPOINT_USERNAME)
+      ANYPOINT_PASSWORD: $(ANYPOINT_PASSWORD)
+
+  - task: Maven@4
+    inputs:
+      mavenPomFile: 'pom.xml'
+      goals: 'mule:deploy'
+      options: '-DmuleDeploy -s .maven/settings.xml -DskipTests'
+      publishJUnitResults: false
+    displayName: 'Deploy to CloudHub 2.0'
+    env:
+      ANYPOINT_USERNAME: $(ANYPOINT_USERNAME)
+      ANYPOINT_PASSWORD: $(ANYPOINT_PASSWORD)
