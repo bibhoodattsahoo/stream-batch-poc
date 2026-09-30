@@ -43,6 +43,7 @@
 						<environment>Sandbox</environment>
 						<target>Cloudhub-US-East-2</target>
 						<muleVersion>4.6.1</muleVersion>
+						<releaseChannel>LTS</releaseChannel>
 						<server>anypoint-exchange-v3</server>
 						<applicationName>stream-batch-poc</applicationName>
 						<properties>
