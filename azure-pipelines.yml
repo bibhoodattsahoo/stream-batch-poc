@@ -8,9 +8,10 @@ steps:
   - task: JavaToolInstaller@0
     inputs:
       versionSpec: '17'
-      jdkSource: 'PreInstalled'
+      jdkSourceOption: 'PreInstalled' # Fixed the parameter name here
       jdkArchitectureOption: 'x64'
     displayName: 'Set up JDK 17'
+
 
   - task: Maven@4
     inputs:
