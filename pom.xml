@@ -2,7 +2,7 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
 	<modelVersion>4.0.0</modelVersion>
 
-	<groupId>4298ec09-1c1f-470c-aa3c-b6dc2f85d1a3</groupId>
+	<groupId>99c92f87-7f92-4d77-ab4a-43ea4c72a982</groupId>
 	<artifactId>stream-batch-poc</artifactId>
 	<name>CI/CD Proof of Concept API</name>
 	<version>1.0.0-SNAPSHOT</version>	
@@ -39,8 +39,7 @@
 					<classifier>mule-application</classifier>
 					<cloudhub2Deployment>
 						<uri>https://anypoint.mulesoft.com</uri>
-						<provider>MC</provider>	
-						<businessGroupId>99c92f87-7f92-4d77-ab4a-43ea4c72a982</businessGroupId>
+						<provider>MC</provider>							
 						<environment>Sandbox</environment>
 						<target>Cloudhub-US-East-2</target>
 						<muleVersion>4.6.1</muleVersion>
