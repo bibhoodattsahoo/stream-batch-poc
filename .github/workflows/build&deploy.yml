@@ -16,7 +16,6 @@ on:
 
 jobs:
   build:
-
     runs-on: ubuntu-latest
 
     steps:
@@ -29,11 +28,9 @@ jobs:
         java-version: '17'
         distribution: 'temurin'
         cache: maven
+
     - name: Build and Deploy to cloudHub
       run: mvn clean deploy -DmuleDeploy --file pom.xml -s .maven/settings.xml
       env:
-          ANYPOINT_USERNAME: ${{ secrets.ANYPOINT_USERNAME }}
-          ANYPOINT_PASSWORD: ${{ secrets.ANYPOINT_PASSWORD }}
-
-
-   
+        ANYPOINT_USERNAME: ${{ secrets.ANYPOINT_USERNAME }}
+        ANYPOINT_PASSWORD: ${{ secrets.ANYPOINT_PASSWORD }}
